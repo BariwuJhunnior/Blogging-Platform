@@ -119,8 +119,8 @@ STATIC_URL = 'static/'
 
 # Define where users go after successfully logging in.
 # The 'home' is a common name for the main application index view.
-LOGIN_REDIRECTT = 'profile'
+LOGIN_REDIRECT_URL = 'profile'
 
 # Define where users go after successfully logging out.
 # Often set to the login page itself or the homepage.
-LOGOUT_REDIRECT = 'login'
+LOGOUT_REDIRECT_URL = 'login'

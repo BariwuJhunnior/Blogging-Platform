@@ -21,8 +21,9 @@
             <div class="nav-right">
                 <ul>
                     {% if user.is_authenticated %}
+                        
                         <li><a href="{% url 'profile' %}">{{ user.username }}</a></li>
-                        <li><a href="{% url 'post_create' %}">Create Post</a></li>
+                        <li><a href="#">Create Post</a></li>
                         <li><a href="{% url 'logout' %}">Logout</a></li>
                     {% else %}
                         <li><a href="{% url 'login' %}">Login</a></li>
