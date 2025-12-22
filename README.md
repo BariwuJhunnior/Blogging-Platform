@@ -37,7 +37,7 @@ git clone <repository-url>
 cd blogging-platform-api
 ```
 
-### 2. Create and activate virtual environment
+### 2. Create and activate a virtual environment
 
 ```bash
 python -m venv env
@@ -138,8 +138,8 @@ The API supports advanced search and filtering capabilities:
 - `author`: Filter by author username
 - `tags`: Filter by tag name
 - `published_date`: Filter by specific publication date
-- `published_after`: Filter posts published after date
-- `published_before`: Filter posts published before date
+- `published_after`: Filter posts published after the date
+- `published_before`: Filter posts published before the date
 
 ### Example Requests
 
@@ -184,7 +184,7 @@ curl -X POST http://127.0.0.1:8000/register/ \
   }'
 ```
 
-#### 2. Login to get token
+#### 2. Log in to get a token
 
 ```bash
 curl -X POST http://127.0.0.1:8000/login/ \
@@ -195,7 +195,7 @@ curl -X POST http://127.0.0.1:8000/login/ \
   }'
 ```
 
-#### 3. Use token for authenticated requests
+#### 3. Use a token for authenticated requests
 
 ```bash
 curl -X POST http://127.0.0.1:8000/ \
@@ -289,7 +289,7 @@ blogging_platform_api/
 - **Documentation**: Automatic API documentation generation
 - **Validation**: Comprehensive input validation and error handling
 
-## 🚀 Deployment
+## Deployment
 
 ### Production Settings
 
@@ -330,7 +330,7 @@ Create a `Dockerfile` for containerized deployment:
 FROM python:3.9-slim
 
 WORKDIR /app
-COPY requirements.txt .
+COPY requirements.txt
 RUN pip install -r requirements.txt
 
 COPY . .
