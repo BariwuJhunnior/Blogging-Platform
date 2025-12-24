@@ -19,6 +19,7 @@ class Tag(models.Model):
     return self.name
 
 class Post(models.Model):
+  id = models.AutoField(primary_key=True)
 
   class Status(models.TextChoices):
     DRAFT='DF', 'Draft'

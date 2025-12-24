@@ -33,7 +33,7 @@ MessageSerializer = inline_serializer(
   list=extend_schema(
     summary='List all posts.',
     responses={
-      201: PostSerializer, #Succesful Creation
+      201: PostSerializer, #Successful Creation
       400: OpenApiResponse(description='Bad Request - Invalid data provided.'),
       401: OpenApiResponse(description='Unauthorized - Token is missing or invalid'),
     },
@@ -60,10 +60,10 @@ class PostListCreateView(generics.ListCreateAPIView):
 
   def get_queryset(self): # type: ignore
     user = self.request.user
-    queryset = Post.objects.select_related('author', 'category').prefetch_related('tags', 'likes', 'ratings').all().order_by('-created_at)') #Order by newest osts
+    queryset = Post.objects.select_related('author', 'category').prefetch_related('tags', 'likes', 'ratings').all().order_by('-created_at') #Order by newest posts
 
     if user.is_authenticated:
-      #Show all published posts OR dragts owned by the current user
+      #Show all published posts OR drafts owned by the current user
       return queryset.filter(
         Q(status=Post.Status.PUBLISHED) | Q(author=user)
       )
@@ -93,7 +93,7 @@ class PostListCreateView(generics.ListCreateAPIView):
         description='Forbidden - You are not the author of this post',
         response=MessageSerializer
       ),
-      404: OpenApiResponse(description='Not Found - Post ID does not exits')
+      404: OpenApiResponse(description='Not Found - Post ID does not exist')
     }
   ),
   destroy=extend_schema(
@@ -167,7 +167,7 @@ class LikePostView(APIView):
 
   @extend_schema(summary='Toggle like on a post', responses={200: OpenApiResponse(description='Success')})
   def post(self, request, pk):
-    post = generics.get_object_or_404(Post, pk=pk)
+    post = get_object_or_404(Post, pk=pk)
     like, created = Like.objects.get_or_create(user=request.user, post=post)
 
     if not created:
@@ -184,7 +184,7 @@ class RatePostView(generics.CreateAPIView):
 
   def post(self, request, pk):
     score = request.data.get('score')
-    post = generics.get_object_or_404(Post, pk=pk)
+    post = get_object_or_404(Post, pk=pk)
     rating, created = Rating.objects.update_or_create(
       user=request.user, post=post, defaults={'score': score}
     )
@@ -198,7 +198,7 @@ class PostPublishView(APIView):
     responses={200: OpenApiResponse(description='Post is now live!')}
   )
   def post(self, request, pk):
-    post = generics.get_object_or_404(Post, pk=pk)
+    post = get_object_or_404(Post, pk=pk)
     self.check_object_permissions(request, post)
 
     post.status = Post.Status.PUBLISHED
@@ -214,15 +214,15 @@ class PostShareView(APIView):
     description="Trigger an email share and get social media links.",
     request=inline_serializer(
       name='ShareRequest',
-      fields={'recipient_name': serializers.EmailField(), 'sender_name': serializers.CharField()}
+      fields={'recipient_email': serializers.EmailField(), 'sender_name': serializers.CharField()}
     ),
     tags=['Social Actions']
   )
   def post(self, request, pk):
-    post = generics.get_object_or_404(Post, pk=pk, status=Post.Status.PUBLISHED)
+    post = get_object_or_404(Post, pk=pk, status=Post.Status.PUBLISHED)
 
     #1. Define the Post URL (In production, use your actual domain)
-    post_url = f"https:/myblog.com/posts/{post.id}/"
+    post_url = f"https://myblog.com/posts/{post.id}/"
 
     #2. Trigger Async Email if email data is provided
     recipient = request.data.get('recipient_email')
