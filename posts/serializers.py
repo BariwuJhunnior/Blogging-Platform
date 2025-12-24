@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Post, Category, Tag
+from .models import Post, Category, Tag, Comment
 
 class PostSerializer(serializers.ModelSerializer):
   # Use StringRelatedField to show the author's username instead of their ID
@@ -24,3 +24,11 @@ class PostSerializer(serializers.ModelSerializer):
     fields = ['id', 'title', 'content', 'author', 'category_name', 'published_date', 'created_at', 'tags']
     
     read_only_fields = ('author', 'created_at') #These are set by the server, not the user
+
+
+class CommentSerializer(serializers.ModelSerializer):
+  author = serializers.ReadOnlyField(source='post.id')
+
+  class Meta:
+    model = Comment
+    fields = ['id', 'post', 'author', 'content', 'created_at']
