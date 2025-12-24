@@ -19,9 +19,12 @@ class PostSerializer(serializers.ModelSerializer):
     required=False, #Tages are optional requirement
   )
 
+  likes_count = serializers.IntegerField(read_only=True)
+  avg_rating = serializers.FloatField(read_only=True)
+
   class Meta:
     model = Post
-    fields = ['id', 'title', 'content', 'author', 'category_name', 'published_date', 'created_at', 'tags']
+    fields = ['id', 'title', 'content', 'author', 'category_name', 'published_date', 'created_at', 'tags', 'likes_count', 'avg_rating']
     
     read_only_fields = ('author', 'created_at') #These are set by the server, not the user
 

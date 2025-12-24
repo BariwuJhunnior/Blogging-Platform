@@ -1,15 +1,19 @@
 from django.shortcuts import render, get_object_or_404
-from rest_framework import generics, permissions
-from .models import Post, Comment
+from rest_framework import generics, permissions, status
+from .models import Post, Comment, Like, Rating
 from .serializers import PostSerializer, CommentSerializer
 from rest_framework.permissions import IsAuthenticated
 from .permissions import IsAuthorOrReadOnly
 from .filters import PostFilter
 from rest_framework import filters
 from django_filters.rest_framework import DjangoFilterBackend
-from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiResponse, inline_serializer
+from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiResponse, inline_serializer, OpenApiParameter
 from rest_framework import generics
 from rest_framework import serializers
+from django.db.models import Count, Avg, QuerySet
+from django.db.models.functions import Coalesce
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
 #A simple serializer for one-off messages
 MessageSerializer = inline_serializer(
@@ -39,7 +43,7 @@ MessageSerializer = inline_serializer(
   ),
 )
 class PostListCreateView(generics.ListCreateAPIView):
-  queryset = Post.objects.all().order_by('-created_at') #Order by newest first
+  queryset = Post.objects.select_related('author', 'category').prefetch_related('tags', 'likes', 'ratings').all().order_by('-created_at') #Order by newest first
   serializer_class = PostSerializer
   filterset_class = PostFilter
 
@@ -100,7 +104,7 @@ class CommentListCreateView(generics.ListCreateAPIView):
   serializer_class = CommentSerializer
   permission_classes = [permissions.IsAuthenticatedOrReadOnly]
 
-  def get_queryset(self):
+  def get_queryset(self) -> QuerySet[Comment]:  # type: ignore [override]
     #Only return comments for the post specified in the URL
     return Comment.objects.filter(post_id=self.kwargs['post_pk']).order_by('-created_at')
   
@@ -117,3 +121,54 @@ class CommentDetailView(generics.RetrieveUpdateDestroyAPIView):
   queryset = Comment.objects.all().order_by('-created_at')
   serializer_class = CommentSerializer
   permission_classes = [IsAuthorOrReadOnly] #Reusing our custom permissions
+
+class TopPostsView(generics.ListAPIView):
+  """
+  Returns the top posts based on likes or average rating.
+  """
+  serializer_class = PostSerializer
+
+  @extend_schema(
+    summary='Get top rated/liked posts', 
+    parameters=[
+      OpenApiParameter(name='sort_by', type=str, description='Sort by "likes" or "rating"')
+    ]
+  )
+  def get_queryset(self) -> QuerySet[Post]:  # type: ignore [override]
+    queryset = Post.objects.annotate(
+      likes_count = Count('likes'),
+      avg_rating=Coalesce(Avg('ratings__score'), 0)
+    )
+
+    sort_by = self.request.GET.get('sort_by', 'likes')
+    if sort_by == 'rating':
+      return queryset.order_by('-avg_rating')
+    return queryset.order_by('-likes_count')
+    
+class LikePostView(APIView):
+  permission_classes = [permissions.IsAuthenticated]
+
+  @extend_schema(summary='Toggle like on a post', responses={200: OpenApiResponse(description='Success')})
+  def post(self, request, pk):
+    post = generics.get_object_or_404(Post, pk=pk)
+    like, created = Like.objects.get_or_create(user=request.user, post=post)
+
+    if not created:
+      like.delete()
+      return Response({'message': 'Unliked'}, status=status.HTTP_200_OK)
+
+    return Response({'message': 'Liked'}, status=status.HTTP_201_CREATED)
+  
+class RatePostView(generics.CreateAPIView):
+  """
+  Allows a user to submit a rating (1-5). Updates if already exists.
+  """
+  permission_classes = [permissions.IsAuthenticated]
+
+  def post(self, request, pk):
+    score = request.data.get('score')
+    post = generics.get_object_or_404(Post, pk=pk)
+    rating, created = Rating.objects.update_or_create(
+      user=request.user, post=post, defaults={'score': score}
+    )
+    return Response({'message': 'Rating saved', 'score': score})
