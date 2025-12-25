@@ -118,6 +118,7 @@ class PostDetailView(generics.RetrieveUpdateDestroyAPIView):
   create=extend_schema(summary='Add a comment to a post', tags=['Comments']),
 )
 class CommentListCreateView(generics.ListCreateAPIView):
+  queryset = Comment.objects.none()
   serializer_class = CommentSerializer
   permission_classes = [permissions.IsAuthenticatedOrReadOnly]
 
