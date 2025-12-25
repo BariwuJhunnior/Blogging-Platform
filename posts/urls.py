@@ -1,6 +1,6 @@
 from django.urls import path
 from .views import (
-  PostListCreateView, PostDetailView, CommentListCreateView, CommentDetailView, LikePostView, RatePostView, TopPostsView, PostShareView, SubscribeCategoryView
+  PostListCreateView, PostDetailView, CommentListCreateView, CommentDetailView, LikePostView, RatePostView, TopPostsView, PostShareView, SubscribeCategoryView, UserFeedView, GlobalFeedView
 )
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView, SpectacularRedocView
 
@@ -22,6 +22,11 @@ urlpatterns = [
 
   #Category
   path('categories/<int:category_id>/subscribe/', SubscribeCategoryView.as_view(), name='category-subscribe'),
+
+  #Feed
+  path('feed/', UserFeedView.as_view(), name='user-feed'),
+  path('explore/', GlobalFeedView.as_view(), name='global-feed'),
+
 
   #Documentation
   path('schema/', SpectacularAPIView.as_view(), name='schema'),

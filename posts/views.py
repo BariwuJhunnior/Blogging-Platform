@@ -278,3 +278,62 @@ class SubscribeCategoryView(APIView):
       {"message": f"Subscribed to {category.name}"},
       status=status.HTTP_201_CREATED
     )
+  
+class UserFeedView(generics.ListAPIView):
+  serializer_class = PostSerializer
+  permission_classes = [IsAuthenticated]
+
+  @extend_schema(
+    summary="Get personalized feed",
+    description="Returns posts from authors you follow or categories you are subscribed to.",
+    tags=['Social Actions']
+  )
+  def get_queryset(self) -> QuerySet[Post]:  # type: ignore [override]
+    user = self.request.user
+
+    #1. Get IDs of authors the user follows
+    followed_authors = user.following.values_list('author_id', flat=True)  # type: ignore
+
+    #2. Get IDs of categories the user is subscribed to
+    subscribed_categories = user.category_subscriptions.values_list('category_id', flat=True)  # type: ignore
+
+    #3. Filter posts: (Author in list OR Category in list) AND Status is Published
+    return Post.objects.filter(
+      Q(author_id__in=followed_authors) | Q(category_id__in=subscribed_categories),
+      status= Post.Status.PUBLISHED
+    ).select_related('author', 'category').prefetch_related('tags').order_by('-published_at')
+
+
+class GlobalFeedView(generics.ListAPIView):
+  """
+  Returns all published posts across the entire platform, 
+  ordered by the most recently published.
+  """
+  serializer_class = PostSerializer
+  permission_classes = [permissions.AllowAny] #Public, so new users can see content
+
+  queryset = Post.objects.filter(status=Post.Status.PUBLISHED).select_related('author', 'category').prefetch_related('tags')
+
+  filter_backends = [
+    DjangoFilterBackend,
+    filters.SearchFilter,
+    filters.OrderingFilter
+  ]
+
+  #1. Exact Filtering (Category name or Author username)
+  filterset_fields = ['category__name', 'author__username']
+
+  #2. Text Search (Partial matches)
+  search_fields = ['title', 'content', 'tags__name']
+
+  #3. Ordering (By date or by popularity)
+  ordering_fields = ['published_at', 'likes_count']
+  ordering = ['-published_at'] #Default ordering
+
+  @extend_schema(
+    summary="Get global discovery feed",
+    description="Returns all published posts from all authors, newest first.",
+    tags=['Discovery']
+  )
+  def get_queryset(self):
+    return Post.objects.filter(status=Post.Status.PUBLISHED).annotate(likes_count=Count('likes')).select_related('author', 'category').prefetch_related('tags')
