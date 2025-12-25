@@ -84,3 +84,15 @@ class Rating(models.Model):
 
   class Meta:
     constraints = [models.UniqueConstraint(fields=['user', 'post'], name='unique_rating')]
+
+
+class CategorySubscription(models.Model):
+  user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='category_subscriptions')
+  category = models.ForeignKey('Category', on_delete=models.CASCADE, related_name='subscribers')
+  created_at = models.DateTimeField(auto_now_add=True)
+
+  class Meta:
+    #Prevents a user from subscribing to the same category twice
+    constraints = [
+      models.UniqueConstraint(fields=['user', 'category'], name='unique_category_sub')
+    ]

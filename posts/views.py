@@ -1,6 +1,6 @@
 from django.shortcuts import render, get_object_or_404
 from rest_framework import generics, permissions, status
-from .models import Post, Comment, Like, Rating
+from .models import Post, Comment, Like, Rating, Category, CategorySubscription
 from .serializers import PostSerializer, CommentSerializer, RatingSerializer
 from rest_framework.permissions import IsAuthenticated
 from .permissions import IsAuthorOrReadOnly
@@ -233,7 +233,7 @@ class PostShareView(APIView):
     sender = request.data.get('sender_name', 'A friend')
 
     if recipient:
-      share_post_via_email.delay(post.title, post_url, recipient, sender)
+      share_post_via_email.delay(post.title, post_url, recipient, sender)  # type: ignore
 
     #3. Return Social Links
     share_links = get_social_share_links(post_url, post.title)
@@ -242,3 +242,39 @@ class PostShareView(APIView):
       "message": "Email is being sent!" if recipient else "Social links generated.",
       "social_share_links": share_links
     }, status=status.HTTP_200_OK)
+  
+class SubscribeCategoryView(APIView):
+  permission_classes = [IsAuthenticated]
+
+  @extend_schema(
+    summary="Toggle category subscription",
+    description="Subscribe to or unsubscribe from a specific category by its ID.",
+    responses={
+      200: OpenApiResponse(description="Unsubscrived successfully"),
+      201: OpenApiResponse(description="Subscribed successfully"),
+      404: OpenApiResponse(description="Category not found!")
+    },
+    tags=['Social Actions']
+  )
+  def post(self, request, category_id):
+    #1. Verify if category exists
+    category = generics.get_object_or_404(Category, id=category_id)
+    #2. Toggle Logic: Try to get the subscription, create it if it doesn't exist
+    subscription, created = CategorySubscription.objects.get_or_create(
+      user=request.user,
+      category=category
+    )
+
+    if not created:
+      #If it already existed, the user wants to unsubscribe
+      subscription.delete()
+      return Response(
+        {"message": f"Unsubscribed form {category.name}"},
+        status=status.HTTP_200_OK
+      )
+    
+    #If it was just created, the user is now subscribed
+    return Response(
+      {"message": f"Subscribed to {category.name}"},
+      status=status.HTTP_201_CREATED
+    )

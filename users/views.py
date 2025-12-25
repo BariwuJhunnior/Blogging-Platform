@@ -1,10 +1,11 @@
 from django.shortcuts import render
 from rest_framework import generics, permissions
+from rest_framework.response import Response
 from .serializers import UserRegistrationSerializer
 from django.contrib.auth.models import User
 from rest_framework.permissions import IsAuthenticated
 from .serializers import UserProfileSerializer, ProfileSerializer, UserSerializer
-from .models import Profile
+from .models import Profile, Follow
 from django.core import exceptions
 
 
@@ -48,3 +49,21 @@ class UserListView(generics.ListAPIView):
   queryset = User.objects.all()
   serializer_class = UserSerializer
   permission_classes = [permissions.AllowAny] #Anyone can see the author list
+
+
+class FollowUserView(generics.GenericAPIView):
+  permission_classes = [IsAuthenticated]
+
+  def post(self, request, username):
+    target_user = generics.get_object_or_404(User, username=username)
+    if target_user == request.user:
+      return Response({"error": "You cannot follow yourself."}, status=400)
+    
+    follow, created = Follow.objects.get_or_create(follower=request.user, author=target_user)
+
+    if not created:
+      follow.delete()
+      return Response({"message": f"Unfollowed {username}"})
+    
+    return Response({"message": f"Following {username}"}, status=201)
+  

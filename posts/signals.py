@@ -2,7 +2,7 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.core.mail import send_mail
 from .models import Rating, Post
-from .tasks import send_rating_notification_email
+from .tasks import send_rating_notification_email, notify_subscribers
 
 @receiver(post_save, sender=Rating)
 def notify_author_of_five_star(sender, instance, created, **kwargs):
@@ -17,3 +17,10 @@ def notify_author_of_five_star(sender, instance, created, **kwargs):
         post.author.username,
         post.title
       )
+
+
+@receiver(post_save, sender=Post)
+def notify_subscribers_on_publish(sender, instance, created, **kwargs):
+  if created and instance.status == Post.Status.PUBLISHED:
+    #use small delay or check to ensure it wasn't already sent
+    notify_subscribers.delay(instance.id)  # type: ignore

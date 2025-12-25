@@ -1,6 +1,7 @@
 from django.urls import path
 from rest_framework.authtoken.views import obtain_auth_token
-from .views import RegisterView, UserProfileView, ProfileDetailView, UserListView
+from .views import RegisterView, UserProfileView, ProfileDetailView, UserListView, FollowUserView
+
 
 urlpatterns = [
     path("register/", RegisterView.as_view(), name='register'),
@@ -8,5 +9,7 @@ urlpatterns = [
     path('profile/', UserProfileView.as_view(), name='user-profile'),
     #Profile endpoint using the username as a lookup
     path('profiles/<str:user__username>/', ProfileDetailView.as_view(), name='profile-detail'),
-    path('users/', UserListView.as_view(), name='user-list')
+    path('profiles/<str:username>/follow/', FollowUserView.as_view(), name='user-follow'),
+    path('users/', UserListView.as_view(), name='user-list'),
+    
 ]
