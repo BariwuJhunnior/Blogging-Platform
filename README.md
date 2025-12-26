@@ -6,20 +6,27 @@ A robust and feature-rich REST API built with Django and Django REST Framework f
 
 ### Core Functionality
 
-- **User Management**: Registration, authentication, and profile management
-- **Post Management**: Full CRUD operations for blog posts
-- **Categorization**: Organize posts with categories and tags
-- **Search & Filtering**: Advanced search and filtering capabilities
-- **Authorization**: Role-based permissions (authors can only edit their own posts)
+- **User Management**: Registration, authentication, profile management, and user following
+- **Post Management**: Full CRUD operations for blog posts with draft/published workflow
+- **Comments**: Comment system for posts with full CRUD operations
+- **Engagement**: Like/unlike posts and rate posts (1-5 stars)
+- **Categorization**: Organize posts with categories and tags, category subscriptions
+- **Feeds**: Personalized user feed (followed authors + subscribed categories), global discovery feed
+- **Search & Filtering**: Advanced search and filtering capabilities across posts
+- **Authorization**: Role-based permissions (authors can only edit their own posts/comments)
+- **Social Sharing**: Share posts via email and get social media links
 - **API Documentation**: Interactive API documentation with Swagger and Redoc
 
 ### Technical Features
 
 - **Token-based Authentication**: Secure API access using Django REST Framework tokens
 - **Auto-generated Documentation**: Interactive API docs using drf-spectacular
-- **Database Optimization**: Efficient queries with proper relationships
+- **Database Optimization**: Efficient queries with proper relationships and select_related/prefetch_related
 - **Input Validation**: Comprehensive data validation and error handling
+- **Async Tasks**: Background email sharing using Celery and Redis
+- **Media Handling**: Profile picture uploads with Pillow
 - **Testing**: Extensive test coverage with unit and integration tests
+- **Pagination**: Page-based pagination for large result sets
 
 ## Requirements
 

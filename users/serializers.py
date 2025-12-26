@@ -2,6 +2,7 @@ from rest_framework import serializers
 from django.contrib.auth.models import User
 from posts.serializers import PostSerializer
 from .models import Profile
+from drf_spectacular.utils import extend_schema_field
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
   password = serializers.CharField(write_only=True)
@@ -37,6 +38,7 @@ class ProfileSerializer(serializers.ModelSerializer):
     model = Profile
     fields = ['username', 'bio', 'profile_picture', 'location', 'posts']
 
+  @extend_schema_field(PostSerializer(many=True))
   def get_posts(self, obj):
     #Obj is the Profile instance
     user_posts = obj.user.posts.filter(status='PB')

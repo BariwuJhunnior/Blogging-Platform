@@ -1,5 +1,5 @@
 from django.shortcuts import render
-from rest_framework import generics, permissions
+from rest_framework import generics, permissions, serializers
 from rest_framework.response import Response
 from .serializers import UserRegistrationSerializer
 from django.contrib.auth.models import User
@@ -51,8 +51,12 @@ class UserListView(generics.ListAPIView):
   permission_classes = [permissions.AllowAny] #Anyone can see the author list
 
 
+class EmptySerializer(serializers.Serializer):
+    pass
+
 class FollowUserView(generics.GenericAPIView):
   permission_classes = [IsAuthenticated]
+  serializer_class = EmptySerializer
 
   def post(self, request, username):
     target_user = generics.get_object_or_404(User, username=username)

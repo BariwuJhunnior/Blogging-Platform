@@ -242,9 +242,13 @@ class PostShareView(APIView):
       "message": "Email is being sent!" if recipient else "Social links generated.",
       "social_share_links": share_links
     }, status=status.HTTP_200_OK)
-  
+   
+class EmptySerializer(serializers.Serializer):
+    pass
+
 class SubscribeCategoryView(APIView):
   permission_classes = [IsAuthenticated]
+  serializer_class = EmptySerializer
 
   @extend_schema(
     summary="Toggle category subscription",
@@ -289,6 +293,9 @@ class UserFeedView(generics.ListAPIView):
     tags=['Social Actions']
   )
   def get_queryset(self) -> QuerySet[Post]:  # type: ignore [override]
+    if getattr(self, 'swagger_fake_view', False):
+        return Post.objects.none()
+
     user = self.request.user
 
     #1. Get IDs of authors the user follows

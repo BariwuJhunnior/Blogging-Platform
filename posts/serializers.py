@@ -38,6 +38,7 @@ class PostSerializer(serializers.ModelSerializer):
 
     read_only_fields = ('author', 'created_at') #These are set by the server, not the user
 
+  @extend_schema_field(OpenApiTypes.STR)
   def get_content_html(self, obj):
     
 
