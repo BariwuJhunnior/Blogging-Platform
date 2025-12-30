@@ -322,13 +322,14 @@ class GlobalFeedView(generics.ListAPIView):
   """
   serializer_class = PostSerializer
   permission_classes = [permissions.AllowAny] #Public, so new users can see content
+  queryset = Post.objects.filter(status='PB').order_by('-published_at')
 
+  #Filter Backends
+  filter_backends = [filters.SearchFilter]
 
-  filter_backends = [
-    DjangoFilterBackend,
-    filters.SearchFilter,
-    filters.OrderingFilter
-  ]
+  #Fields that are searchable
+  #Implement "Search": Add a search bar so users can find specific posts by keywords?
+  search_fields = ['title', 'content', 'author__username', 'category__name']
 
   #1. Exact Filtering (Category name or Author username)
   filterset_fields = ['category__name', 'author__username']

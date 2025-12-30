@@ -20,7 +20,7 @@ class Tag(models.Model):
 
 class Post(models.Model):
   id = models.AutoField(primary_key=True)
-  author = models.ForeignKey(User, on_delete=models.CASCADE, related_name='posts')
+  author = models.ForeignKey(User, on_delete=models.CASCADE, related_name='author')
   category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name='posts')
 
 

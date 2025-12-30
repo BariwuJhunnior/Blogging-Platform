@@ -10,7 +10,7 @@ class PostSerializer(serializers.ModelSerializer):
   # Use StringRelatedField to show the author's username instead of their ID
   author = serializers.ReadOnlyField(source='author.username')
   # Use SlugRelatedField to show category name, and make it required
-  category_name = serializers.ReadOnlyField(source='category_name')
+  category_name = serializers.ReadOnlyField()
 
   #This field will show the rendered HTML
   content_html = serializers.SerializerMethodField()
