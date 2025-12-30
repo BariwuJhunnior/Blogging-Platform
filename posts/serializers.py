@@ -10,11 +10,7 @@ class PostSerializer(serializers.ModelSerializer):
   # Use StringRelatedField to show the author's username instead of their ID
   author = serializers.ReadOnlyField(source='author.username')
   # Use SlugRelatedField to show category name, and make it required
-  category_name = serializers.SlugRelatedField(
-    source='category', # Link to the 'category' field in the Post model
-    slug_field='name',
-    queryset = Category.objects.all(), # Used for validation in POST/PUT
-  )
+  category_name = serializers.ReadOnlyField(source='category_name')
 
   #This field will show the rendered HTML
   content_html = serializers.SerializerMethodField()
@@ -76,3 +72,14 @@ class RatingSerializer(serializers.ModelSerializer):
         model = Rating
         fields = ['score']
 
+
+class CategorySerializer(serializers.ModelSerializer):
+  post_count = serializers.SerializerMethodField()
+
+  class Meta:
+    model = Category
+    fields = ['id', 'name', 'post_count']
+
+  def get_post_count(self, obj):
+    #Counts only posts that are Published
+    return Post.objects.filter(category=obj, status='PB').count()

@@ -1,7 +1,7 @@
 from django.shortcuts import render, get_object_or_404
 from rest_framework import generics, permissions, status
 from .models import Post, Comment, Like, Rating, Category, CategorySubscription
-from .serializers import PostSerializer, CommentSerializer, RatingSerializer
+from .serializers import PostSerializer, CommentSerializer, RatingSerializer, CategorySerializer
 from rest_framework.permissions import IsAuthenticated
 from .permissions import IsAuthorOrReadOnly
 from .filters import PostFilter
@@ -15,9 +15,10 @@ from django.db.models.functions import Coalesce
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.db.models import Q
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view, permission_classes
 from .tasks import share_post_via_email
 from .utils import get_social_share_links
+from django.utils import timezone
 
 #A simple serializer for one-off messages
 MessageSerializer = inline_serializer(
@@ -298,6 +299,9 @@ class UserFeedView(generics.ListAPIView):
 
     user = self.request.user
 
+    if user.is_superuser:
+      return Post.objects.filter(status='PB').order_by('-published_at')
+
     #1. Get IDs of authors the user follows
     followed_authors = user.following.values_list('author_id', flat=True)  # type: ignore
 
@@ -306,9 +310,9 @@ class UserFeedView(generics.ListAPIView):
 
     #3. Filter posts: (Author in list OR Category in list) AND Status is Published
     return Post.objects.filter(
-      Q(author_id__in=followed_authors) | Q(category_id__in=subscribed_categories),
+      (Q(author_id__in=followed_authors) | Q(category_id__in=subscribed_categories)),
       status= Post.Status.PUBLISHED
-    ).select_related('author', 'category').prefetch_related('tags').order_by('-published_at')
+    ).distinct().select_related('author', 'category').prefetch_related('tags').order_by('-published_at')
 
 
 class GlobalFeedView(generics.ListAPIView):
@@ -319,7 +323,6 @@ class GlobalFeedView(generics.ListAPIView):
   serializer_class = PostSerializer
   permission_classes = [permissions.AllowAny] #Public, so new users can see content
 
-  queryset = Post.objects.filter(status=Post.Status.PUBLISHED).select_related('author', 'category').prefetch_related('tags')
 
   filter_backends = [
     DjangoFilterBackend,
@@ -343,4 +346,60 @@ class GlobalFeedView(generics.ListAPIView):
     tags=['Discovery']
   )
   def get_queryset(self):
+
+    queryset = Post.objects.filter(status='PB').order_by('-published_at')
+
     return Post.objects.filter(status=Post.Status.PUBLISHED).annotate(likes_count=Count('likes')).select_related('author', 'category').prefetch_related('tags')
+  
+
+class CategoryListView(generics.ListCreateAPIView):
+  #Below calculated the count of post in the database before it even hits the serializer
+  queryset = Category.objects.all()
+  serializer_class = CategorySerializer
+  permission_classes = [permissions.AllowAny()]
+
+  #Allow anyone to see Categories, but only logged-in users to create one
+  def get_permissions(self):
+    if self.request.method == 'POST':
+      return [permissions.IsAuthenticated()]
+    
+    return [permissions.AllowAny()]
+  
+class CategoryPostListView(generics.ListAPIView):
+  serializer_class = PostSerializer
+  
+
+  def get_queryset(self):
+    #Grab the category name from the URL
+    category_name = self.kwargs['category_name']
+    #Filter posts by that category AND ensure they are published
+    return Post.objects.filter(
+      category__name__iexact=category_name,
+      status='PB'
+    ).order_by('-published_at')
+  
+class MyDraftListView(generics.ListAPIView):
+  serializer_class = PostSerializer
+  permission_classes = [permissions.IsAuthenticated()]
+
+  def get_queryset(self):
+    #Only show the logged-in user's own drafts
+    return Post.objects.filter(
+      author=self.request.user,
+      status = 'DF'
+    ).order_by('-created_at')
+  
+@api_view(['POST'])
+@permission_classes([permissions.IsAuthenticated()])
+def publish_post(request, pk):
+  
+  try:
+    post = Post.objects.get(pk=pk, author=request.user)
+
+    post.status = 'PB'
+    post.published_at = timezone.now()
+    post.save()
+
+    return Response({'status': 'Post published successfully!'}, status=200)
+  except Post.DoesNotExist:
+    return Response({'error': 'Post not found or unauthorized.'}, status=404)

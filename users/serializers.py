@@ -31,18 +31,21 @@ class UserProfileSerializer(serializers.ModelSerializer):
 class ProfileSerializer(serializers.ModelSerializer):
   username = serializers.ReadOnlyField(source='user.username')
   #Include the user's posts directly in the profile
-  posts = serializers.SerializerMethodField()
+  posts = PostSerializer(source='user.posts', many=True, read_only=True)
+
+  follower_count = serializers.IntegerField(source='user.followers.count', read_only=True)
+  following_count = serializers.IntegerField(source='user.following', read_only=True)
 
 
   class Meta:
     model = Profile
-    fields = ['username', 'bio', 'profile_picture', 'location', 'posts']
+    fields = ['id', 'username', 'bio', 'profile_picture', 'location', 'posts', 'follower_count', 'following_count']
 
   @extend_schema_field(PostSerializer(many=True))
   def get_posts(self, obj):
     #Obj is the Profile instance
-    user_posts = obj.user.posts.filter(status='PB')
-    return PostSerializer(user_posts, many=True).data
+    published_posts = obj.user.posts.filter(status='PB')
+    return PostSerializer(published_posts, many=True).data
   
 class UserSerializer(serializers.ModelSerializer):
   #Include the profile bio we created earlier

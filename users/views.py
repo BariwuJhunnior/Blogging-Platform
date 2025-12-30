@@ -30,7 +30,7 @@ class UserProfileView(generics.RetrieveUpdateAPIView):
     return self.request.user
   
 class ProfileDetailView(generics.RetrieveUpdateAPIView):
-  queryset = Profile.objects.all()
+  queryset = Profile.objects.all().select_related('user').prefetch_related('user__posts')
   serializer_class = ProfileSerializer
   lookup_field = 'user__username' #Search by /profile/john/instead of /profile/1/
 

@@ -21,6 +21,8 @@ class Tag(models.Model):
 class Post(models.Model):
   id = models.AutoField(primary_key=True)
   author = models.ForeignKey(User, on_delete=models.CASCADE, related_name='posts')
+  category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name='posts')
+
 
   class Status(models.TextChoices):
     DRAFT='DF', 'Draft'
@@ -29,7 +31,7 @@ class Post(models.Model):
   status = models.CharField(
     max_length=2,
     choices=Status.choices,
-    default=Status.DRAFT
+    default='PB'
   )
   published_at = models.DateTimeField(null=True, blank=True)
 
