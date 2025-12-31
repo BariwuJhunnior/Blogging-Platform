@@ -11,5 +11,4 @@ urlpatterns = [
     path('profiles/<str:user__username>/', ProfileDetailView.as_view(), name='profile-detail'),
     path('profiles/<str:username>/follow/', FollowUserView.as_view(), name='user-follow'),
     path('users/', UserListView.as_view(), name='user-list'),
-    
 ]

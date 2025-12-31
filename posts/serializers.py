@@ -6,11 +6,23 @@ from drf_spectacular.types import OpenApiTypes
 import markdown
 import bleach
 
+
+class CommentSerializer(serializers.ModelSerializer):
+  author_username = serializers.ReadOnlyField(source='author.username')
+
+  class Meta:
+    model = Comment
+    fields = ['id', 'post', 'author_username', 'content', 'created_at']
+    read_only_fields = ['author', 'post']
+
 class PostSerializer(serializers.ModelSerializer):
   # Use StringRelatedField to show the author's username instead of their ID
   author = serializers.ReadOnlyField(source='author.username')
   # Use SlugRelatedField to show category name, and make it required
-  category_name = serializers.ReadOnlyField()
+  category = serializers.SlugRelatedField(
+    queryset=Category.objects.all(),
+    slug_field='name'
+  )
 
   #This field will show the rendered HTML
   content_html = serializers.SerializerMethodField()
@@ -23,16 +35,28 @@ class PostSerializer(serializers.ModelSerializer):
     required=False, #Tages are optional requirement
   )
 
-  likes_count = serializers.IntegerField(read_only=True)
+  likes_count = serializers.ReadOnlyField(source='total_likes')
+  has_liked = serializers.SerializerMethodField()
   avg_rating = serializers.FloatField(read_only=True)
 
-  share_links = serializers.SerializerMethodField()
+  #share_links = serializers.SerializerMethodField()
+
+  status_display = serializers.CharField(source='get_status_display', read_only=True)
+  comments = CommentSerializer(many=True, read_only=True)
 
   class Meta:
     model = Post
-    fields = ['id', 'title', 'content', 'author', 'category_name', 'published_at', 'created_at', 'tags', 'likes_count', 'avg_rating', 'share_links', 'content_html']
+    fields = ['id', 'title', 'content', 'author', 'status_display', 'category', 'created_at', 'has_liked', 'likes_count', 'comments', 'content_html', 'avg_rating', 'tags', 'status']
 
-    read_only_fields = ('author', 'created_at') #These are set by the server, not the user
+    read_only_fields = ('author',) #These are set by the server, not the user
+
+  def get_has_liked(self, obj):
+    request = self.context.get('request')
+    if request is None or not request.user.is_authenticated:
+      return False
+    
+    #Check if the user exists in the ManyToMany relationship
+    return obj.likes.filter(pk=request.user.pk).exists()
 
   @extend_schema_field(OpenApiTypes.STR)
   def get_content_html(self, obj):
@@ -57,14 +81,6 @@ class PostSerializer(serializers.ModelSerializer):
       url = f"https://myblog.com/posts/{obj.id}"
       return get_social_share_links(url, obj.title)
     return None
-
-
-class CommentSerializer(serializers.ModelSerializer):
-  author = serializers.ReadOnlyField(source='author.username')
-
-  class Meta:
-    model = Comment
-    fields = ['id', 'post', 'author', 'content', 'created_at']
 
 
 class RatingSerializer(serializers.ModelSerializer):

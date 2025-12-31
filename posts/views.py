@@ -2,7 +2,7 @@ from django.shortcuts import render, get_object_or_404
 from rest_framework import generics, permissions, status
 from .models import Post, Comment, Like, Rating, Category, CategorySubscription
 from .serializers import PostSerializer, CommentSerializer, RatingSerializer, CategorySerializer
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
 from .permissions import IsAuthorOrReadOnly
 from .filters import PostFilter
 from rest_framework import filters
@@ -59,6 +59,9 @@ class PostListCreateView(generics.ListCreateAPIView):
 
   search_fields = ['title', 'content', 'author__username', 'tags__name']
 
+  def perform_create(self, serializer):
+    serializer.save(author=self.request.user)
+
   def get_queryset(self): # type: ignore
     user = self.request.user
     queryset = Post.objects.select_related('author', 'category').prefetch_related('tags', 'likes', 'ratings').all().order_by('-created_at') #Order by newest posts
@@ -112,7 +115,12 @@ class PostDetailView(generics.RetrieveUpdateDestroyAPIView):
   
   # 1. User must be logged in (IsAuthenticated) to attempt modification.
   # 2. They must pass the custom check (IsAuthorOrReadOnly).
-  permission_classes = [IsAuthenticated, IsAuthorOrReadOnly]
+  permission_classes = [IsAuthenticatedOrReadOnly]
+
+  def get_serializer_context(self):
+    context = super().get_serializer_context()
+    context.update({"request": self.request})
+    return context
 
 @extend_schema_view(
   list=extend_schema(summary='List comments for a post', tags=['Comments']),
@@ -154,15 +162,11 @@ class TopPostsView(generics.ListAPIView):
     ]
   )
   def get_queryset(self) -> QuerySet[Post]:  # type: ignore [override]
-    queryset = Post.objects.annotate(
-      likes_count = Count('likes'),
-      avg_rating=Coalesce(Avg('ratings__score'), 0)
-    )
-
-    sort_by = self.request.GET.get('sort_by', 'likes')
-    if sort_by == 'rating':
-      return queryset.order_by('-avg_rating')
-    return queryset.order_by('-likes_count')
+    
+  
+    return Post.objects.annotate(
+      likes_count=Count('likes')
+    ).order_by('-likes_count')[:10] #Get top 10
     
 class LikePostView(APIView):
   permission_classes = [permissions.IsAuthenticated]
@@ -171,13 +175,22 @@ class LikePostView(APIView):
   @extend_schema(summary='Toggle like on a post', responses={200: OpenApiResponse(description='Success')})
   def post(self, request, pk):
     post = get_object_or_404(Post, pk=pk)
-    like, created = Like.objects.get_or_create(user=request.user, post=post)
+    user = request.user
 
-    if not created:
-      like.delete()
-      return Response({'message': 'Unliked'}, status=status.HTTP_200_OK)
+    if post.likes.filter(pk=user.pk).exists():
+      post.likes.remove(user)
+      message = "Post Unliked"
+      status_code = status.HTTP_200_OK
+    else:
+      post.likes.add(user)
+      message = "Post Liked"
+      status_code = status.HTTP_201_CREATED
 
-    return Response({'message': 'Liked'}, status=status.HTTP_201_CREATED)
+    return Response({
+      "message": message,
+      "current_total": post.likes.count(),
+      "has_liked": post.likes.filter(pk=user.pk).exists()
+    }, status=status_code)
   
 class RatePostView(generics.CreateAPIView):
   """
@@ -195,7 +208,7 @@ class RatePostView(generics.CreateAPIView):
     return Response({'message': 'Rating saved', 'score': score})
   
 class PostPublishView(APIView):
-  permission_classes = [IsAuthorOrReadOnly]
+  permission_classes = [permissions.IsAuthenticated]
 
   @extend_schema(
     summary='Publish a draft post',
@@ -203,12 +216,13 @@ class PostPublishView(APIView):
   )
   def post(self, request, pk):
     post = get_object_or_404(Post, pk=pk)
-    self.check_object_permissions(request, post)
-
-    post.status = Post.Status.PUBLISHED
+    
+    if post.author != request.user:
+      return Response({"error": "YOu are not the author"}, status=403)
+    
+    post.status = 'PB'
     post.save()
-
-    return Response({'message': 'Post published successfully!'})
+    return Response({"message": "Post published successfully!"})
   
 class PostShareView(APIView):
   permission_classes = [permissions.IsAuthenticatedOrReadOnly]
@@ -381,7 +395,7 @@ class CategoryPostListView(generics.ListAPIView):
   
 class MyDraftListView(generics.ListAPIView):
   serializer_class = PostSerializer
-  permission_classes = [permissions.IsAuthenticated()]
+  permission_classes = [permissions.IsAuthenticated]
 
   def get_queryset(self):
     #Only show the logged-in user's own drafts

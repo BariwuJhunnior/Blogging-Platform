@@ -11,8 +11,8 @@ def notify_author_of_five_star(sender, instance, created, **kwargs):
     post = instance.post
 
     if post.author.email:
-      #.delay() - is the magic word that makes this asynchronous!
-      send_rating_notification_email.delay(  # type: ignore
+      #Execute synchronously for development (remove .delay() to avoid Celery dependency)
+      send_rating_notification_email(  # type: ignore
         post.author.email,
         post.author.username,
         post.title
@@ -22,5 +22,5 @@ def notify_author_of_five_star(sender, instance, created, **kwargs):
 @receiver(post_save, sender=Post)
 def notify_subscribers_on_publish(sender, instance, created, **kwargs):
   if created and instance.status == Post.Status.PUBLISHED:
-    #use small delay or check to ensure it wasn't already sent
-    notify_subscribers.delay(instance.id)  # type: ignore
+    #Execute synchronously for development (remove .delay() to avoid Celery dependency)
+    notify_subscribers(instance.id)  # type: ignore
