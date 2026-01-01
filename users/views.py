@@ -66,7 +66,7 @@ class FollowUserView(generics.GenericAPIView):
     if target_user == request.user:
       return Response({"error": "You cannot follow yourself."}, status=400)
     
-    follow, created = Follow.objects.get_or_create(follower=request.user, author=target_user)
+    follow, created = Follow.objects.get_or_create(follower=request.user, followed_user=target_user)
 
     if not created:
       follow.delete()

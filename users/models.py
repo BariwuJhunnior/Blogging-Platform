@@ -25,10 +25,10 @@ class Profile(models.Model):
 
 class Follow(models.Model):
   follower = models.ForeignKey(User, on_delete=models.CASCADE, related_name='following')
-  author = models.ForeignKey(User, on_delete=models.CASCADE, related_name='followers')
+  followed_user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='followers')
   created_at = models.DateTimeField(auto_now_add=True)
 
   class Meta:
     constraints = [
-      models.UniqueConstraint(fields=['follower', 'author'], name='unique_followers')
+      models.UniqueConstraint(fields=['follower', 'followed_user'], name='unique_followers')
     ]
