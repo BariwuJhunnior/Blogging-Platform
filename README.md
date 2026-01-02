@@ -492,3 +492,4 @@ If you encounter any issues or have questions:
 ---
 
 **Built using Django and Django REST Framework**
+**Built as capstone project**
